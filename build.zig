@@ -42,8 +42,8 @@ pub fn build(b: *std.Build) !void {
         while (iter.next()) |line| {
             if (line.len > 2) {
                 switch (line[1]) {
-                    'I' => exe.addIncludePath(line[2..]),
-                    'L' => exe.addLibraryPath(line[2..]),
+                    'I' => exe.addIncludePath(std.build.LazyPath{.path = line[2..]}),
+                    'L' => exe.addLibraryPath(std.build.LazyPath{.path = line[2..]}),
                     'l' => exe.linkSystemLibraryName(line[2..]),
                     else => unreachable,
                 }
