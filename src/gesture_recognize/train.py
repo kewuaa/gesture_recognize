@@ -1,11 +1,11 @@
 from pathlib import Path
 
-from sklearn import svm
 import joblib
 import numpy as np
+from sklearn import svm
 
 
-def load_data() -> tuple[np.ndarray]:
+def load_data() -> tuple[np.ndarray, np.ndarray]:
     """加载数据。"""
 
     data = np.loadtxt("data\\data.txt", delimiter=',')
