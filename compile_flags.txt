@@ -1,9 +1,0 @@
--Iinclude
--ID:\Softwares\Program_Files\C\include
--LD:\Softwares\Program_Files\C\lib
--ID:\Softwares\Program_Files\Python\python\include
--ID:\Softwares\Program_Files\Python\venvs\default\Lib\site-packages\numpy\core\include
--LD:\Softwares\Program_Files\Python\python\libs
--lpython310
--lfftw3.dll
--lopencv_world460.dll

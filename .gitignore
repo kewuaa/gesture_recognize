@@ -1,4 +1,4 @@
-.venv/
-zig-cache/
-zig-out/
+.xmake/
+.cache/
+build/
 data/

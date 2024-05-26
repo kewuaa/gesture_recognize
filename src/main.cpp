@@ -1,15 +1,18 @@
+#define FOURIER_DESC_SIZE 12
+#define PI 3.1415926535
+
 #include <filesystem>
 #include <fstream>
 #include <vector>
 #include <complex>
+#include <fftw3.h>
+#include <Python.h>
+#include <numpy/arrayobject.h>
+#include <opencv2/opencv.hpp>
 
-#include "predict.h"
-#include "Python.h"
-#include "fftw/fftw3.h"
-#include "opencv2/opencv.hpp"
-#define FOURIER_DESC_SIZE 12
-#define PI 3.1415926535
 namespace fs = std::filesystem;
+
+
 typedef enum {
     Record,
     Predict
@@ -60,18 +63,57 @@ unsigned int find_max_contour(
 }
 
 
-#ifdef _ZIGC
-extern "C" {
-#endif
+class PyInterpreter {
+    private:
+        PyObject* pyglobal;
 
-void MainEntry() {
+    public:
+        PyInterpreter(const char* model) {
+            Py_Initialize();
+            if (_import_array() < 0) {
+                PyErr_Print();
+                PyErr_SetString(PyExc_ImportError,
+                        "numpy.core.multiarray failed to import");
+            }
+
+            char buffer[500];
+            sprintf(
+                buffer,
+                "import joblib\n"
+                "model = joblib.load('%s')\n",
+                model
+            );
+            PyRun_SimpleString(buffer);
+            pyglobal = PyImport_AddModule("__main__");
+        }
+
+        ~PyInterpreter() {
+            Py_Finalize();
+        }
+
+        int predict(double* fourier_desc, unsigned int length) {
+            Py_ssize_t shape[2];
+            shape[0] = 1;
+            shape[1] = length;
+            PyList_New(length);
+            auto arr = PyArray_SimpleNewFromData(2, &shape[0], NPY_FLOAT64, (void*)fourier_desc);
+            PyObject_SetAttrString(pyglobal, "arr", arr);
+            PyRun_SimpleString("res = model.predict(arr)[0]\n");
+            auto res = PyObject_GetAttrString(pyglobal, "res");
+            if (res == nullptr) {
+                PyErr_Print();
+                exit(1);
+            } else {
+                return PyLong_AsLong(res);
+            }
+        }
+};
+
+
+int main() {
+    PyInterpreter py("/home/kewuaa/Projects/gesture_recognize/model/svm.model");
     const char* data_dir = "./data";
     std::ofstream data_file("./data/_data.txt", std::ios::trunc);
-    PyObject* pypredict = PyImport_ImportModule("predict");
-    if (!pypredict) {
-        PyErr_Print();
-        throw std::runtime_error("load module failed");
-    }
     char text[100];
     cv::Size text_size;
     unsigned int label = 0, pre;
@@ -146,7 +188,7 @@ void MainEntry() {
             }
             case Predict: {
                 std::sprintf(text, "mode: Predict\0");
-                pre = predict(fourier_desc, FOURIER_DESC_SIZE);
+                pre = py.predict(fourier_desc, FOURIER_DESC_SIZE);
                 std::sprintf(text + 100, "%d\0", pre);
                 text_size = cv::getTextSize(
                     text + 100,
@@ -224,8 +266,5 @@ void MainEntry() {
         fs::rename("./data/_data.txt", "./data/data.txt");
     }
     delete roi_rect;
+    return 0;
 }
-
-#ifdef _ZIGC
-}
-#endif
